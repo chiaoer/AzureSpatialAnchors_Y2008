@@ -1,1 +1,1 @@
-# AzureSpatialAnchors_withSpeechRecognition_Y2008
+# AzureSpatialAnchors_Y2008
