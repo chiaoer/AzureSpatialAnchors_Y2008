@@ -1,0 +1,53 @@
+{
+  materials: [
+    {
+      name: '14059PirateTreasuremapScroll',
+      parameters: [
+        {
+          baseColor: '14059PirateTreasuremapScroll_diffuse',
+        },
+        {
+          baseColorTint: [
+            1,
+            1,
+            1,
+            1,
+          ],
+        },
+        {
+          metallic: 1,
+        },
+        {
+          roughness: 0.42640099999999997,
+        },
+        {
+          opacity: null,
+        },
+      ],
+      source: 'build/sceneform_sdk/default_materials/obj_material.sfm',
+    },
+  ],
+  model: {
+    attributes: [
+      'Position',
+      'TexCoord',
+      'Orientation',
+    ],
+    collision: {},
+    file: 'sampledata/models/14059_Pirate_Treasure_map_Scroll_v1_L1.obj',
+    name: '14059_Pirate_Treasure_map_Scroll_v1_L1',
+    recenter: 'root',
+    scale: 0.05909900000000001,
+  },
+  samplers: [
+    {
+      file: 'sampledata/models\\14059PirateTreasuremapScroll_diffuse.jpg',
+      name: '14059PirateTreasuremapScroll_diffuse',
+      params: {
+        usage_type: 'Data',
+      },
+      pipeline_name: '14059PirateTreasuremapScroll_diffuse.jpg',
+    },
+  ],
+  version: '0.54:2',
+}

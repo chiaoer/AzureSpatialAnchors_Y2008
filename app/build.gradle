@@ -52,3 +52,18 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 }
+sceneform.asset('sampledata/models/10803_TreasureChest_v2_L3.obj',
+        'default',
+        'sampledata/models/10803_TreasureChest_v2_L3.sfa',
+        'src/main/res/raw/treasure')
+
+sceneform.asset('sampledata/models/Shelby.obj',
+        'default',
+        'sampledata/models/Shelby.sfa',
+        'src/main/res/raw/car')
+
+
+sceneform.asset('sampledata/models/14059_Pirate_Treasure_map_Scroll_v1_L1.obj',
+        'default',
+        'sampledata/models/14059_Pirate_Treasure_map_Scroll_v1_L1.sfa',
+        'src/main/res/raw/map')
