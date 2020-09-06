@@ -20,6 +20,7 @@ import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.rendering.Color;
 import com.google.ar.sceneform.rendering.Material;
 import com.google.ar.sceneform.rendering.MaterialFactory;
+import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 
 import com.microsoft.azure.spatialanchors.AnchorLocateCriteria;
@@ -29,6 +30,7 @@ import com.microsoft.azure.spatialanchors.CloudSpatialException;
 import com.microsoft.azure.spatialanchors.LocateAnchorsCompletedEvent;
 
 import java.text.DecimalFormat;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SharedActivity extends AppCompatActivity
@@ -67,6 +69,21 @@ public class SharedActivity extends AppCompatActivity
     private Button locateButton;
     private ArSceneView sceneView;
     private TextView textView;
+
+    /***************************
+     Configuration for model rendering
+    ***************************/
+    public ModelRenderable carRenderable;
+    public ModelRenderable mapRenderable;
+    public ModelRenderable boxRenderable;
+    private AnchorType anchorType = AnchorType.Car;
+
+    enum AnchorType {
+        Box,
+        Map,
+        Car,
+        Sphere //original type
+    }
 
     public void createButtonClicked(View source) {
         textView.setText("Scan your environment and place an anchor");
@@ -147,6 +164,9 @@ public class SharedActivity extends AppCompatActivity
                 cloudAnchorManager.update(sceneView.getArFrame());
             }
         });
+
+        /********** Initialize Custom Render ********/
+        initializeCustomRender();
     }
 
     @Override
@@ -207,10 +227,25 @@ public class SharedActivity extends AppCompatActivity
                         case AlreadyTracked:
                         case Located:
                             AnchorVisual foundVisual = new AnchorVisual(arFragment, anchor.getLocalAnchor());
+                            foundVisual.setCustomRender(carRenderable, mapRenderable, boxRenderable);//Set custom render
                             foundVisual.setCloudAnchor(anchor);
                             foundVisual.getAnchorNode().setParent(arFragment.getArSceneView().getScene());
                             String cloudAnchorIdentifier = foundVisual.getCloudAnchor().getIdentifier();
-                            foundVisual.setColor(this, FOUND_COLOR);
+
+                            //Get shape info. from the cloud.
+                            Map<String, String> properties = anchor.getAppProperties();
+                            if (properties.containsKey("Shape")) {
+                                try {
+                                    AnchorVisual.Shape savedShape = AnchorVisual.Shape.valueOf(properties.get("Shape"));
+                                    Log.d("Denise:", "# anchorLookedUp...savedShape : " + savedShape);
+                                    foundVisual.setShape(savedShape);
+                                } catch (IllegalArgumentException ex) {
+                                    // Invalid shape property, keep default shape
+                                }
+                            }
+
+                            if (foundVisual.getShape() == AnchorVisual.Shape.Sphere)
+                                foundVisual.setColor(this, FOUND_COLOR);
                             foundVisual.render(arFragment);
                             anchorVisuals.put(cloudAnchorIdentifier, foundVisual);
                             break;
@@ -245,7 +280,21 @@ public class SharedActivity extends AppCompatActivity
     private Anchor createAnchor(HitResult hitResult) {
 
         AnchorVisual visual = new AnchorVisual(arFragment, hitResult.createAnchor());
-        visual.setColor(this, READY_COLOR);
+        visual.setCustomRender(carRenderable, mapRenderable, boxRenderable);
+
+        Log.d("Denise", "createAnchor()...anchorType = " + anchorType);
+
+        if (anchorType == AnchorType.Box) {
+            visual.setShape(AnchorVisual.Shape.Box);
+        } else if (anchorType == AnchorType.Map) {
+            visual.setShape(AnchorVisual.Shape.Map);
+        } else if (anchorType == AnchorType.Car) {
+            visual.setShape(AnchorVisual.Shape.Car);
+        } else if (anchorType == AnchorType.Sphere) {
+            visual.setShape(AnchorVisual.Shape.Sphere);
+            visual.setColor(this, READY_COLOR);
+        }
+
         visual.render(arFragment);
         anchorVisuals.put("", visual);
 
@@ -342,11 +391,15 @@ public class SharedActivity extends AppCompatActivity
         CloudSpatialAnchor cloudAnchor = new CloudSpatialAnchor();
         visual.setCloudAnchor(cloudAnchor);
         cloudAnchor.setLocalAnchor(visual.getLocalAnchor());
+        cloudAnchor.getAppProperties().put("Shape", visual.getShape().toString()); //Save shape info. to cloud
         cloudAnchorManager.createAnchorAsync(cloudAnchor)
                 .thenAccept(anchor -> {
                     String anchorId = anchor.getIdentifier();
                     Log.d("ASADemo:", "created anchor: " + anchorId);
-                    visual.setColor(this, SAVED_COLOR);
+                    Log.d("Denise:", "# transitionToSaving...getShape(): " + visual.getShape());
+
+                    if (visual.getShape() == AnchorVisual.Shape.Sphere)
+                        visual.setColor(this, SAVED_COLOR);
                     anchorVisuals.put(anchorId, visual);
                     anchorVisuals.remove("");
 
@@ -362,7 +415,9 @@ public class SharedActivity extends AppCompatActivity
                         exceptionMessage = (((CloudSpatialException) t).getErrorCode().toString());
                     }
                     createAnchorExceptionCompletion(exceptionMessage);
-                    visual.setColor(this, FAILED_COLOR);
+
+                    if (visual.getShape() == AnchorVisual.Shape.Sphere)
+                        visual.setColor(this, FAILED_COLOR);
                     return null;
         });
     }
@@ -388,5 +443,48 @@ public class SharedActivity extends AppCompatActivity
 
             updateStatic();
         }, 500);
+    }
+
+    /**************** Initialize Custom Render *******************/
+    private void initializeCustomRender() {
+        ModelRenderable.builder()
+                .setSource(this, R.raw.car)
+                .build()
+                .thenAccept(renderable -> carRenderable = renderable)
+                .exceptionally(
+                        throwable -> {
+//                            Toast toast =
+//                                    Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG);
+//                            toast.setGravity(Gravity.CENTER, 0, 0);
+//                            toast.show();
+                            Log.d("AnchorVisual", "Unable to load carRenderable");
+                            return null;
+                        });
+        ModelRenderable.builder()
+                .setSource(this, R.raw.map)
+                .build()
+                .thenAccept(renderable -> mapRenderable = renderable)
+                .exceptionally(
+                        throwable -> {
+//                            Toast toast =
+//                                    Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG);
+//                            toast.setGravity(Gravity.CENTER, 0, 0);
+//                            toast.show();
+                            Log.d("AnchorVisual", "Unable to load mapRenderable");
+                            return null;
+                        });
+        ModelRenderable.builder()
+                .setSource(this, R.raw.treasure)
+                .build()
+                .thenAccept(renderable -> boxRenderable = renderable)
+                .exceptionally(
+                        throwable -> {
+//                            Toast toast =
+//                                    Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG);
+//                            toast.setGravity(Gravity.CENTER, 0, 0);
+//                            toast.show();
+                            Log.d("AnchorVisual", "Unable to load boxRenderable");
+                            return null;
+                        });
     }
 }

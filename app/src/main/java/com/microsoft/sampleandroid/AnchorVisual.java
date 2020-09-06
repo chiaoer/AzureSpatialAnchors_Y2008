@@ -3,6 +3,7 @@
 package com.microsoft.sampleandroid;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.google.ar.core.Anchor;
 import com.google.ar.sceneform.AnchorNode;
@@ -10,6 +11,7 @@ import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.Color;
 import com.google.ar.sceneform.rendering.Material;
 import com.google.ar.sceneform.rendering.MaterialFactory;
+import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.Renderable;
 import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -24,6 +26,9 @@ class AnchorVisual {
         Sphere,
         Cube,
         Cylinder,
+        Car,
+        Map,
+        Box,
     }
 
     private final AnchorNode anchorNode;
@@ -33,6 +38,11 @@ class AnchorVisual {
     private Material material;
 
     private static HashMap<Integer, CompletableFuture<Material>> solidColorMaterialCache = new HashMap<>();
+
+    //Custom render
+    private ModelRenderable boxRend;
+    private ModelRenderable mapRend;
+    private ModelRenderable carRend;
 
     public AnchorVisual(ArFragment arFragment, Anchor localAnchor) {
         anchorNode = new AnchorNode(localAnchor);
@@ -114,6 +124,12 @@ class AnchorVisual {
         });
     }
 
+    public void setCustomRender(ModelRenderable car, ModelRenderable map, ModelRenderable box) {
+        carRend = car;
+        mapRend = map;
+        boxRend = box;
+    }
+
     public void destroy() {
         MainThreadContext.runOnUiThread(() -> {
             anchorNode.setRenderable(null);
@@ -127,8 +143,12 @@ class AnchorVisual {
     }
 
     private void recreateRenderableOnUiThread() {
+        Log.d("Denise", "# recreateRenderableOnUiThread()...shape = " + shape);
+
         if (material != null) {
+            Log.d("Denise", "recreateRenderableOnUiThread()..NOT null...shape = " + shape);
             Renderable renderable;
+
             switch (shape) {
                 case Sphere:
                     renderable = ShapeFactory.makeSphere(
@@ -148,6 +168,29 @@ class AnchorVisual {
                             0.175f,
                             new Vector3(0.0f, 0.0875f, 0.0f),
                             material);
+                    break;
+                default:
+                    throw new IllegalStateException("Invalid shape");
+            }
+            transformableNode.setRenderable(renderable);
+
+        } else if (shape != Shape.Sphere && shape != Shape.Cube && shape != Shape.Cylinder ) {
+            Log.d("Denise", "recreateRenderableOnUiThread()..null...shape = " + shape);
+            Renderable renderable;
+
+            switch (shape) {
+                //For Spatial anchors demo
+                case Car:
+                    Log.d("Denise", "# Car");
+                    renderable = carRend;
+                    break;
+                case Map:
+                    Log.d("Denise", "# Map");
+                    renderable = mapRend;
+                    break;
+                case Box:
+                    Log.d("Denise", "# Box");
+                    renderable = boxRend;
                     break;
                 default:
                     throw new IllegalStateException("Invalid shape");
