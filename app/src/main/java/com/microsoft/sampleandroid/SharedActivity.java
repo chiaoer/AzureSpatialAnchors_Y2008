@@ -28,10 +28,19 @@ import com.microsoft.azure.spatialanchors.AnchorLocatedEvent;
 import com.microsoft.azure.spatialanchors.CloudSpatialAnchor;
 import com.microsoft.azure.spatialanchors.CloudSpatialException;
 import com.microsoft.azure.spatialanchors.LocateAnchorsCompletedEvent;
+import com.microsoft.cognitiveservices.speech.CancellationDetails;
+import com.microsoft.cognitiveservices.speech.ResultReason;
+import com.microsoft.cognitiveservices.speech.SpeechConfig;
+import com.microsoft.cognitiveservices.speech.SpeechRecognitionResult;
+import com.microsoft.cognitiveservices.speech.SpeechRecognizer;
+import com.microsoft.cognitiveservices.speech.audio.AudioConfig;
 
 import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class SharedActivity extends AppCompatActivity
 {
@@ -85,9 +94,34 @@ public class SharedActivity extends AppCompatActivity
         Sphere //original type
     }
 
+    /***************************
+     Configuration for Speech recognition
+     ***************************/
+    private String recognizedText;
+    // Replace below with your own subscription key
+    private static final String SpeechSubscriptionKey = "Set me";
+    // Replace below with your own service region (e.g., "westus").
+    private static final String SpeechRegion = "Set me";
+    private SpeechConfig speechConfig;
+    private Boolean recognized;
+
+    private MicrophoneStream microphoneStream;
+    private MicrophoneStream createMicrophoneStream() {
+        if (microphoneStream != null) {
+            microphoneStream.close();
+            microphoneStream = null;
+        }
+        Log.d("Denise", "Shared()...createMicrophoneStream");
+
+        microphoneStream = new MicrophoneStream();
+        return microphoneStream;
+    }
+
     public void createButtonClicked(View source) {
         textView.setText("Scan your environment and place an anchor");
         destroySession();
+
+        SpeechRecognize();
 
         cloudAnchorManager = new AzureSpatialAnchorsManager(sceneView.getSession());
 
@@ -142,6 +176,8 @@ public class SharedActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d("Denise", "Shared()...onCreate()");
+
         setContentView(R.layout.activity_shared);
 
         arFragment = (ArFragment)getSupportFragmentManager().findFragmentById(R.id.ar_fragment);
@@ -167,6 +203,21 @@ public class SharedActivity extends AppCompatActivity
 
         /********** Initialize Custom Render ********/
         initializeCustomRender();
+
+        /********** Initialize SpeechSDK ********/
+        // create config
+        try {
+//            if(speechConfig == null) {
+//            Log.d("Denise", "Shared()...speechConfig setting ");
+            speechConfig = SpeechConfig.fromSubscription(SpeechSubscriptionKey, SpeechRegion);
+//            }
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+            Log.d("Denise", "Shared()...Fail !! to  speechConfig ");
+
+//            displayException(ex);
+            return;
+        }
     }
 
     @Override
@@ -486,5 +537,65 @@ public class SharedActivity extends AppCompatActivity
                             Log.d("AnchorVisual", "Unable to load boxRenderable");
                             return null;
                         });
+    }
+
+    /**************** Start Speech Recognition *******************/
+    public void SpeechRecognize() {
+        Log.d("Denise", "# SpeechRecognize()");
+
+        recognized = Boolean.FALSE;
+
+        try {
+            // final AudioConfig audioInput = AudioConfig.fromDefaultMicrophoneInput();
+            final AudioConfig audioInput = AudioConfig.fromStreamInput(createMicrophoneStream());
+            final SpeechRecognizer reco = new SpeechRecognizer(speechConfig, audioInput);
+
+            final Future<SpeechRecognitionResult> task = reco.recognizeOnceAsync();
+            setOnTaskCompletedListener(task, result -> {
+//                    String s = result.getText();
+                recognizedText = result.getText();
+                if (result.getReason() != ResultReason.RecognizedSpeech) {
+                    String errorDetails = (result.getReason() == ResultReason.Canceled) ? CancellationDetails.fromResult(result).getErrorDetails() : "";
+                    recognizedText = "Recognition failed with " + result.getReason() + ". Did you enter your subscription?" + System.lineSeparator() + errorDetails;
+                } else {
+
+                }
+
+                reco.close();
+                Log.d("Denise", "Shared()...Recognizer returned = " + recognizedText);
+
+                if(recognizedText.contains("box"))
+                    anchorType = AnchorType.Box;
+                if(recognizedText.contains("map"))
+                    anchorType = AnchorType.Map;
+                if(recognizedText.contains("car"))
+                    anchorType = AnchorType.Car;
+
+                recognized = Boolean.TRUE;
+
+//                setRecognizedText(recognizedText);
+//                enableButtons();
+            });
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+//            displayException(ex);
+        }
+    }
+
+    private <T> void setOnTaskCompletedListener(Future<T> task, OnTaskCompletedListener<T> listener) {
+        s_executorService.submit(() -> {
+            T result = task.get();
+            listener.onCompleted(result);
+            return null;
+        });
+    }
+
+    private interface OnTaskCompletedListener<T> {
+        void onCompleted(T taskResult);
+    }
+
+    private static ExecutorService s_executorService;
+    static {
+        s_executorService = Executors.newCachedThreadPool();
     }
 }

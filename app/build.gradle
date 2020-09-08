@@ -52,6 +52,8 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    // Speech SDK
+    implementation 'com.microsoft.cognitiveservices.speech:client-sdk:1.13.0'
 }
 sceneform.asset('sampledata/models/10803_TreasureChest_v2_L3.obj',
         'default',

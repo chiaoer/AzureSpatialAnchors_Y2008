@@ -20,6 +20,9 @@ allprojects {
     repositories {
         // Use the local repository to override packages when testing new versions
         mavenLocal()
+        maven {
+            url 'https://csspeechstorage.blob.core.windows.net/maven/'
+        }
         google()
         jcenter()
     }
